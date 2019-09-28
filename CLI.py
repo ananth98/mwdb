@@ -277,9 +277,63 @@ def HOG_3(imageid,k):   #Task-3 of HOG features
         p=sim_img[i][0]
         image = Image.open(directory+p) 
         image.show()   
+    
+def SIFT_1(imageid):
+    img = cv2.imread(imageid)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    sift = cv2.xfeatures2d.SIFT_create()
+    (kps, descriptors) = sift.detectAndCompute(gray, None)
+    return descriptors
+
+def SIFT_2():
+    for imageid in os.listdir(directory):
+        img = cv2.imread(imageid)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        sift = cv2.xfeatures2d.SIFT_create()
+        (kps, descriptors) = sift.detectAndCompute(gray, None)
+        if not os.path.exists(csv_path +'sift_csv'):
+            os.mkdir(csv_path+'sift_csv')
+        csv_file = csv+'sift_csv\\'+imageid[:-3] + 'csv'
+        with open(csv_file, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerows(descriptors)
+        f.close()
+
+def SIFT_3(imageid,k):
+    img = cv2.imread(imageid)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    sift = cv2.xfeatures2d.SIFT_create()
+    (kps, test_descriptors) = sift.detectAndCompute(gray, None)
+    distance_matrix = sift_test(test_descriptors)
+    for i in range(k):
+        print("The image is ", distance_matrix[i][0], "Distance is ", distance_matrix[i][1])
+        im = Image.open(directory + "/" + distance_matrix[i][0])
+        im.show()
+    print("SIFT Done")
+
+def sift_test(test_sift_features):
+    sift_matrix = []
+    for csvfile in os.listdir(csv_path+"sift_csv"):
+        with open(csvfile, 'r') as f:
+            sift_list = list(csv.reader(f))
+        distance = 0.0
+        for i in range(len(test_sift_features)):
+            dist = []
+            for j in range(len(sift_list)):
+                dist.append(euclidean_distance(test_sift_features[i], sift_list[j]))
+            distance += min(dist)
+        sift_matrix.append([csvfile[:-3] + 'jpg', distance])
+    sift_matrix = sorted(sift_matrix, key=lambda x: x[1])
+    return sift_matrix
+
+#Distance Measure Used Euclidean
+def euclidean_distance(single_feature_vector,test_lbp_features):
+    return math.sqrt(sum((float(a)-float(b))**2 for a,b in zip(single_feature_vector,test_lbp_features)))
+
+    
 # Performing all the tasks for both the models
 if __name__ == '__main__':
-    model = input("Provide the model you want to work with lbp/cm/HOG: ")
+    model = input("Provide the model you want to work with lbp/cm/HOG/SIFT: ")
     task = input("Tell us which task you want to perform: ")
     global CM_image_store_path
     #CM_image_store_path = input("Enter the folder: ")
@@ -321,5 +375,19 @@ if __name__ == '__main__':
             HOG_3(imageid, k)                          
         else:
             print("Wrong Choice!!!")
+
+    if (model.lower() == 'sift'):
+        if(task.lower()=='task1'):
+            imageid=input("enter the image name\n")
+            SIFT_1(imageid)
+        elif(task.lower()=='task2'):
+            SIFT_2()
+        elif(task.lower()=='task3'):
+            imageid=input("Provide the image name:")    #input the image_id to which similarity has to be checked
+            k=int(input("number of similar images you want to show:"))
+            SIFT_3(imageid, k)
+        else:
+            print("Wrong Choice!!!")
+    print("Wrong Choice!!!")
 #C:\\Users\\Lenovo\Desktop\\Downloads\\CSE 515 Fall19 - Smaller Dataset\\LBP(CM)
 #Hand_0011684.jpg
