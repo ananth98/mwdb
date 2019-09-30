@@ -7,6 +7,7 @@ import csv
 import json
 import shutil
 import scipy
+import math
 import scipy.stats
 from skimage.feature import hog
 
@@ -231,14 +232,16 @@ def LBP_task3(image_store_path,imageid,k):
         LBP_image_windows(image_store_path, directory, imagename, 100, 100)
         LBP(image_store_path, imagename)
     LBP_Similar(imageid, k)
-    
-def HOG_1(imageid): #Task-1 of HOG Vector model
+def HOG_feat(imageid):
     img= cv2.imread(os.path.join(directory,imageid))
     width = int(img.shape[1]/10)  #downsampling the image from 10-1
     height = int(img.shape[0]/10)   #downsampling the height from 10-1
     resized_img = cv2.resize(img,(width,height), interpolation = cv2.INTER_AREA)  #store the resized image
     (h, _) = hog(resized_img, orientations=9, pixels_per_cell=(8, 8),cells_per_block=(2, 2),transform_sqrt=False, block_norm="L2-Hys", visualize=True)  #Applying HOG funtion to obtain features of HOG
     h= list(h)  #converting the features into list
+    return h
+def HOG_1(imageid): #Task-1 of HOG Vector model
+    h=HOG_feat(imageid)
     with open('feature_HOG.csv' , 'a') as csvfile:  #Storing the features
         writer = csv.writer(csvfile, delimiter=',')
         writer.writerow([imageid, h])
@@ -253,15 +256,10 @@ def HOG_2(img_fold):  #Task-2 of HOG features
             
 def HOG_3(imageid,k):   #Task-3 of HOG features
     HOG_2(directory)
-    img= cv2.imread(os.path.join(directory,imageid))
-    height = int(img.shape[0]/10)   #downsampling the height from 10-1
-    width = int(img.shape[1]/10)    #downsampling the width from 10-1
-    resized_img = cv2.resize(img, (width,height), interpolation = cv2.INTER_AREA)   #store the resized image
-    (h, _) = hog(resized_img, orientations=9, pixels_per_cell=(8, 8),cells_per_block=(2, 2),transform_sqrt=False, block_norm="L2-Hys", visualize=True)     #Applying HOG funtion 
-    feat= list(h)  #converting the features into list
+    feat= HOG_feat(imageid)  #converting the features into list
+    reader = csv.reader(csvfile, delimiter=',')
     f={}
     with open('feature_HOG.csv', 'r') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
         for row in reader:
             if any(field.strip() for field in row):
                 distance_img = (sum([(a - b) ** 2 for a, b in zip(feat, json.loads(row[1]))]))**0.5     #Euclidean Distance
@@ -279,7 +277,7 @@ def HOG_3(imageid,k):   #Task-3 of HOG features
         image.show()   
     
 def SIFT_1(imageid):
-    img = cv2.imread(imageid)
+    img = cv2.imread(directory+imageid)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     sift = cv2.xfeatures2d.SIFT_create()
     (kps, descriptors) = sift.detectAndCompute(gray, None)
@@ -287,23 +285,16 @@ def SIFT_1(imageid):
 
 def SIFT_2():
     for imageid in os.listdir(directory):
-        img = cv2.imread(imageid)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        sift = cv2.xfeatures2d.SIFT_create()
-        (kps, descriptors) = sift.detectAndCompute(gray, None)
+        descriptors=SIFT_1(imageid)
         if not os.path.exists(csv_path +'sift_csv'):
             os.mkdir(csv_path+'sift_csv')
-        csv_file = csv+'sift_csv\\'+imageid[:-3] + 'csv'
-        with open(csv_file, 'w') as f:
+        csv_file = csv_path+'sift_csv\\'+imageid[:-3] + 'csv'
+        with open(csv_file, 'w',newline='') as f:
             writer = csv.writer(f)
             writer.writerows(descriptors)
         f.close()
-
 def SIFT_3(imageid,k):
-    img = cv2.imread(imageid)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    sift = cv2.xfeatures2d.SIFT_create()
-    (kps, test_descriptors) = sift.detectAndCompute(gray, None)
+    test_descriptors=SIFT_1(imageid)
     distance_matrix = sift_test(test_descriptors)
     for i in range(k):
         print("The image is ", distance_matrix[i][0], "Distance is ", distance_matrix[i][1])
@@ -314,7 +305,8 @@ def SIFT_3(imageid,k):
 def sift_test(test_sift_features):
     sift_matrix = []
     for csvfile in os.listdir(csv_path+"sift_csv"):
-        with open(csvfile, 'r') as f:
+        #print(csvfile)
+        with open(csv_path+"sift_csv\\"+csvfile, 'r') as f:
             sift_list = list(csv.reader(f))
         distance = 0.0
         for i in range(len(test_sift_features)):
@@ -350,7 +342,7 @@ if __name__ == '__main__':
             LBP_task3(CM_image_store_path,imageid,k)
         else:
             print("Wrong Choice!!!")
-    if (model.lower() == 'cm'):
+    elif (model.lower() == 'cm'):
         CM_image_store_path = input("Enter the folder: ")
         if (task.lower()) == 'task1':
             imageid = input("Provide the image name: ")
@@ -363,7 +355,7 @@ if __name__ == '__main__':
             CM_task3(CM_image_store_path,imageid, k)
         else:
             print("Wrong Choice!!!")
-    if (model.lower() == 'hog'):
+    elif (model.lower() == 'hog'):
         if(task.lower()=='task1'):
             imageid=input("enter the image name\n")
             HOG_1(imageid)
@@ -376,7 +368,7 @@ if __name__ == '__main__':
         else:
             print("Wrong Choice!!!")
 
-    if (model.lower() == 'sift'):
+    elif (model.lower() == 'sift'):
         if(task.lower()=='task1'):
             imageid=input("enter the image name\n")
             SIFT_1(imageid)
@@ -388,6 +380,7 @@ if __name__ == '__main__':
             SIFT_3(imageid, k)
         else:
             print("Wrong Choice!!!")
-    print("Wrong Choice!!!")
+    else:
+        print("Wrong Choice!!!")
 #C:\\Users\\Lenovo\Desktop\\Downloads\\CSE 515 Fall19 - Smaller Dataset\\LBP(CM)
 #Hand_0011684.jpg
